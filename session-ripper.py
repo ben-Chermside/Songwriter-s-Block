@@ -10,5 +10,5 @@ for i in range(1, 25054):
         print(f"Tune {i} not found on site! Error code: {abc.status_code}")
         continue
     tune_title = re.search(r"T: (.*)", abc.text).group(1).strip()
-    with open(f"data/{i}-{tune_title}.abc", "w") as f:
+    with open(f"data/session/{i}-{tune_title}.abc", "w") as f:
         f.write(abc.text)
