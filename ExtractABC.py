@@ -1,4 +1,45 @@
 #This contains a function that extracts an ABC file and returns an object with all the info
+import sys
+
+def abort(message):
+    print(message)
+    sys.exit(0)
+
+
+
+#should do the same thing, I copied this off of another ABC file format project
+#project here, https://github.com/xoliver/abctools/blob/master/abctools.py
+#licence allows, https://github.com/xoliver/abctools/blob/master/LICENSE
+#no idea if works better than my version, probaby does
+def load_abc_file(fname):
+    """
+    Read ABC file and return a dictionary containing the different headers
+    plus the tune in the key 'tune'
+    """
+
+    abc = {}
+    with open(fname, 'r') as f:
+        lines = f.readlines()
+    i = 0
+    for line in lines:
+        line = line.strip()
+        parts = line.split(':')
+        header = parts[0].strip().upper()
+        if len(header) != 1 or header not in ('X', 'T', 'R', 'M', 'L', 'K'):
+            break
+        abc[header] = ':'.join(parts[1:]).strip()
+        i += 1
+
+    abc['tune'] = ' '.join(map(lambda x: x.strip(), lines[i:])).strip()
+
+    if 'X:' in abc['tune']:
+        abort('Oops, more than one tune found in this file!')
+
+    return abc
+
+
+
+
 
 def extractFile(filePath):
     """
