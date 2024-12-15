@@ -3,7 +3,7 @@ import os
 
 # TODO: HANDLE TRIPLETS!
 # DEAL WITH DOTTED RHYTHMS
-# FIX TRANSPOSITION, it does not handle modes correctly
+# FIX OCTAVES WHEN TRANSPOSING TO C
 
 # start of each line in csv: t,m,s,g,[x,d,o],[x,d,o] etc.
 # t = time signature
@@ -45,6 +45,21 @@ mode_adjustments = {
     "locrian": [0, -1, -1, 0, -1, -1, -1]
 }
 
+key_mapping = {
+    "C": 0,
+    "Db": 1,
+    "D": 2,
+    "Eb": 3,
+    "E": 4,
+    "F": 5,
+    "F#": 6,
+    "Gb": 6,
+    "G": 7,
+    "Ab": 8,
+    "A": 9,
+    "Bb": 10,
+    "B": 11
+}
 
 
 def parse_abc(path):
@@ -202,11 +217,15 @@ def parse_abc(path):
                     note = note_mapping[c.upper()]
                     note = (
                         note
-                        + key_adjustments[key][note_diatonic_mapping[note]]
-                        + mode_adjustments[mode][note_diatonic_mapping[note]] 
-                        + adjustment
+                        + key_adjustments[key][note_diatonic_mapping[note]] % 12
                     )
-                    note = note % 12
+                    note = (note - key_mapping[key]) % 12
+
+                    note = (
+                        note
+                        + mode_adjustments[mode][note_diatonic_mapping[note]] 
+                        + adjustment % 12
+                    )
                     
                     duration = 1
                     
