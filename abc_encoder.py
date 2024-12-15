@@ -1,7 +1,11 @@
 import sys
 import os
 
-# start of each line in csv: t,m,s,g,[],[],[]
+# TODO: HANDLE TRIPLETS!
+# DEAL WITH DOTTED RHYTHMS
+# FIX TRANSPOSITION, it does not handle modes correctly
+
+# start of each line in csv: t,m,s,g,[x,d,o],[x,d,o] etc.
 # t = time signature
 # m = mode
 # s = song type
@@ -12,6 +16,35 @@ import os
 # x = letter note
 # d = (relative) duration
 # o = octave
+
+key_adjustments = {
+    "C":  [0, 0, 0, 0, 0, 0, 0],   
+    "G":  [0, 0, 0, 0, 0, 0, 1],   
+    "D":  [1, 0, 0, 1, 0, 0, 0],   
+    "A":  [1, 0, 0, 1, 1, 0, 0],    
+    "E":  [1, 1, 0, 1, 1, 0, 0],   
+    "B":  [1, 1, 0, 1, 1, 1, 0],    
+    "F#": [1, 1, 1, 1, 1, 1, 0],   
+    "C#": [1, 1, 1, 1, 1, 1, 1],
+    "F":  [0, 0, 0, 0, 0, 0, -1],   
+    "Bb": [0, 0, -1, 0, 0, 0, -1],  
+    "Eb": [0, 0, -1, 0, 0, -1, -1], 
+    "Ab": [0, -1, -1, 0, 0, -1, -1],
+    "Db": [0, -1, -1, 0, -1, -1, -1],
+    "Gb": [-1, -1, -1, 0, -1, -1, -1], 
+    "Cb": [-1, -1, -1, -1, -1, -1, -1], 
+}
+
+mode_adjustments = {
+    "major": [0, 0, 0, 0, 0, 0, 0],
+    "dorian": [0, 0, -1, 0, 0, 0, -1],
+    "phrygian": [0, -1, -1, 0, 0, -1, -1],
+    "lydian": [0, 0, 0, 1, 0, 0, 0],
+    "mixolydian": [0, 0, 0, 0, 0, 0, -1],
+    "minor": [0, 0, -1, 0, 0, -1, -1],
+    "locrian": [0, -1, -1, 0, -1, -1, -1]
+}
+
 
 
 def parse_abc(path):
@@ -36,7 +69,17 @@ def parse_abc(path):
         "A": 9,
         "B": 11,
         "H": 11,
-        }
+    }
+
+    note_diatonic_mapping = {
+        0: 0,
+        2: 1,
+        4: 2,
+        5: 3,
+        7: 4,
+        9: 5,
+        11: 6,
+    }
 
     for line in file:
         print(line)
@@ -53,12 +96,12 @@ def parse_abc(path):
             line = line.replace(' ', '')
             line = line.lower()
 
-            key = note_mapping[line[3].upper()]
+            key = line[2].upper()
 
-            if line[4] == '#':
-                key = (key + 1) % 12
-            if line[4] == 'b':
-                key = (key - 1) % 12
+            if len(line) > 2 and line[3] == '#':
+                key += '#'
+            if len(line) > 2 and line[3] == 'b':
+                key += 'b'
 
             if 1 <= len(line[2:]) <= 2:
                 mode = 'major'
@@ -73,7 +116,7 @@ def parse_abc(path):
             elif 'mix' in line:
                 mode = 'mixolydian'
             elif 'loc' in line:
-                mode = 'loc'
+                mode = 'locrian'
             else:
                 mode = 'unspecified'
         elif len(line) > 1 and (line[1] != ':' or line.startswith('|:')) and (len(line) != 0 and "utf-8" not in line) and ('|' in line):
@@ -91,17 +134,58 @@ def parse_abc(path):
 
                 if c == ' ':
                     i += 1
+
+                # skip extra stuff enclosed in quotes
+                if c == '"':
+                    i += 1
+                    while i < len(line) and line[i] != '"':
+                        i += 1
+                    i += 1 
+
+                # skip extra stuff enclosed in !
+                if c == '!':
+                    i += 1
+                    while i < len(line) and line[i] != '!':
+                        i += 1
+                    i += 1 
+
+                # skip ornaments enclosed in {}
+                if c == '{':
+                    i += 1
+                    while i < len(line) and line[i] != '}':
+                        i += 1
+                    i += 1 
                     
                 # barlines and repeats
-                elif c in '|:':
-                    if i + 1 < len(line) and line[i + 1] in ':|':
-                        # repeats
-                        symbol = c + line[i + 1]
-                        notes.append([symbol, 0, 0])  
+                elif c == '|':
+                    if i + 1 < len(line) and line[i + 1] == ':':  # |:
+                        notes.append(['|:', 0, 0])  
+                        i += 1 
+                    elif i + 1 < len(line) and line[i + 1] == '1':  # |1 
+                        notes.append(['|1', 0, 0])  
+                        i += 1  
+                    elif i + 1 < len(line) and line[i + 1] == '2':  # |2 
+                        notes.append(['|2', 0, 0])  
+                        i += 1  
+                    elif i + 1 < len(line) and line[i + 1] == '|':  # || 
+                        notes.append(['||', 0, 0])  
                         i += 1  
                     else:
-                        # single bar line
-                        notes.append([c, 0, 0])
+                        notes.append(['|', 0, 0])  # |
+                elif c == ':':
+                    if i + 1 < len(line) and line[i + 1] == '|':  
+                        if i + 2 < len(line) and line[i + 2] == '1':  # ":|1"
+                            notes.append([':|1', 0, 0])  
+                            i += 2
+                        elif i + 2 < len(line) and line[i + 2] == '2':  # ":|2"
+                            notes.append([':|2', 0, 0]) 
+                            i += 2  
+                        else:
+                            notes.append([':|', 0, 0])  # :|
+                            i += 1
+                    elif i + 1 < len(line) and line[i + 1] == ':':
+                        notes.append(['::', 0, 0])  # ::
+                        i += 1
                 
                 # accidentals
                 elif c in "^_=":
@@ -115,7 +199,15 @@ def parse_abc(path):
 
                 # notes
                 elif c.isalpha() and c.upper() in note_mapping:
-                    note = (note_mapping[c.upper()] + adjustment) % 12                    
+                    note = note_mapping[c.upper()]
+                    note = (
+                        note
+                        + key_adjustments[key][note_diatonic_mapping[note]]
+                        + mode_adjustments[mode][note_diatonic_mapping[note]] 
+                        + adjustment
+                    )
+                    note = note % 12
+                    
                     duration = 1
                     
                     if c.isupper():
@@ -139,19 +231,72 @@ def parse_abc(path):
                         elif line[i].isdigit():
                             duration *= int(line[i])
 
+                # chords
+                elif c == "[":
+                    chord_notes = []
+                    
+                    i += 1 
+                    
+                    # read until closing bracket
+                    while i < len(line) and line[i] != "]":
+
+                        duration = 1
+
+                        # note
+                        if line[i].isalpha() and line[i].upper() in note_mapping:
+                            note = note_mapping[line[i].upper()]
+                            note = (
+                                note
+                                + key_adjustments[key][note_diatonic_mapping[note]]
+                                + mode_adjustments[mode][note_diatonic_mapping[note]] 
+                                + adjustment
+                            )   
+                            note = note % 12
+                            if line[i].isupper():
+                                octave = -1
+                            else:
+                                octave = 0
+
+                            # octave
+                            while i + 1 < len(line) and line[i + 1] in ["'", ","]:
+                                if line[i + 1] == "'":
+                                    octave += 1
+                                elif line[i + 1] == ",":
+                                    octave -= 1
+                                i += 1
+
+                            # duration
+                            while i + 1 < len(line) and (line[i + 1].isdigit() or line[i + 1] == "/"):
+                                i += 1
+                                if line[i] == "/":
+                                    duration /= 2
+                                elif line[i].isdigit():
+                                    duration *= int(line[i])
+
+                            chord_notes.append([note, duration, octave])
+
+                        i += 1
+
+                    note = chord_notes
+                    octave = 0
+
                 # add encoded note
                 if not (note == 0 and duration == 0 and octave == 0):
                     notes.append([note, duration, octave])
                 adjustment
                 i += 1
 
-    return {
-        "time_signature": time_signature,
-        "mode": mode,
-        "song_type": song_type,
-        "key": key,
-        "notes": notes
-    }
+    if notes[-1][0] != '||':
+        if notes[-1][0] == ':|':
+            notes[-1][0] = ':||'
+        else:
+            notes[-1][0] = '||'
+
+    encoding = ['Swedish', song_type, time_signature, key, mode]
+    for note in notes:
+        encoding.append(note)
+
+    return encoding
 
 
 def main():
@@ -161,18 +306,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-                
-
-            
-
-
-
-
-
-
-
-
-
