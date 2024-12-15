@@ -43,11 +43,11 @@ def parse_abc(path):
         # song type
         if line.startswith('R:'):
             line = line.replace(' ', '')
-            song_type = line[2:]
+            song_type = line[2:].strip()
         # time signature
         elif line.startswith('M:'):
             line = line.replace(' ', '')
-            time_signature = line[2:]
+            time_signature = line[2:].strip()
         # key and mode
         elif line.startswith('K:'):
             line = line.replace(' ', '')
@@ -76,7 +76,8 @@ def parse_abc(path):
                 mode = 'loc'
             else:
                 mode = 'unspecified'
-        elif len(line) > 1 and  (line[1] != ':' or line.startswith('|:')) and (len(line) != 0 and "utf-8" not in line):
+        elif len(line) > 1 and (line[1] != ':' or line.startswith('|:')) and (len(line) != 0 and "utf-8" not in line) and ('|' in line):
+            line = line.replace(' ', '')
             adjustment = 0
 
             i = 0
@@ -139,17 +140,18 @@ def parse_abc(path):
                             duration *= int(line[i])
 
                 # add encoded note
-                notes.append([note, duration, octave])
+                if not (note == 0 and duration == 0 and octave == 0):
+                    notes.append([note, duration, octave])
                 adjustment
                 i += 1
 
-            return {
-                "time_signature": time_signature,
-                "mode": mode,
-                "song_type": song_type,
-                "key": key,
-                "notes": notes
-            }
+    return {
+        "time_signature": time_signature,
+        "mode": mode,
+        "song_type": song_type,
+        "key": key,
+        "notes": notes
+    }
 
 
 def main():
