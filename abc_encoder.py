@@ -1,6 +1,5 @@
 import sys
 import os
-import subprocess
 import re
 
 # TODO: HANDLE NATURALS
@@ -543,7 +542,8 @@ def main():
                         if encoded_list != ['','','']:
                             for element in encoded_list:
                                 if element != '':
-                                    f_out.write(str(element) + ',')
+                                    element_without_commas = str(element).replace(",", '')
+                                    f_out.write(str(element_without_commas) + ', ')
                             f_out.write('\n')
 
 if __name__ == "__main__":
