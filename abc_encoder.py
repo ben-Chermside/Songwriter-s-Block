@@ -122,7 +122,7 @@ def parse_abc(path):
         elif line.startswith('L:'):
             read_default_note_duration = True
         # key and mode
-        elif line.startswith('K:'):
+        elif line.startswith('K:') and read_key == False:
 
             read_key = True
 
@@ -520,12 +520,13 @@ def process_file(file_path):
 
 
 def main():
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 3:
         sys.exit(1)
     
     # root directory to scan for .abc files
-    root_directory = sys.argv[1]
-    with open('swedish_tunes.csv', 'w') as f_out:
+    output_path = sys.argv[1]
+    root_directory = sys.argv[2]
+    with open(output_path, 'w') as f_out:
         # make sure directory is valid
         if not os.path.isdir(root_directory):
             # print(f"Error: {root_directory} is not a valid directory.")
@@ -539,9 +540,11 @@ def main():
                         # queue each .abc file
                         file_path = os.path.join(subdir, file)
                         encoded_list = process_file(file_path)
-                        for element in encoded_list:
-                            f_out.write(str(element) + ',')
-                        f_out.write('\n')
+                        if encoded_list != ['','','']:
+                            for element in encoded_list:
+                                if element != '':
+                                    f_out.write(str(element) + ',')
+                            f_out.write('\n')
 
 if __name__ == "__main__":
     main()
