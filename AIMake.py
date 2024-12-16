@@ -103,7 +103,7 @@ class markov:
             self.states[datum[0]].encounterToken(datum[1])
     def gen(self, token):
         """
-        Get the next actual element given previus element's token
+        given token, give the next element of the song
         """
         return self.states[token].goToNextToken()
 
@@ -121,7 +121,7 @@ def genSaveMarkov(directory):
                 testEncoding = parse_abc(filepath)
                 worked = True
             except KeyError: #I encountered an error on some of the parcings, this may change if parce_abc() is updated
-                pass
+                print("encountered key error")
             except Exception:
                 print("unspecifyed exception on file", filepath)
             if worked:
@@ -132,12 +132,12 @@ def genSaveMarkov(directory):
                 for i in range(len(testEncoding)-1):
                     trainingData.append([testEncoding[i], testEncoding[i+1]])
                 MarkModle.train(trainingData)
-    with open("markovTest.pickle", 'wb') as file:
-        pickle.dump(MarkModle, file)
+    # with open("markovTest.pickle", 'wb') as file:
+    #     pickle.dump(MarkModle, file)
 
 def toupleAafy(changeList):
     """
-    turns list into touble
+    turns list into tuple recursivly
     """
     for i in range(len(changeList)):
         if isinstance(changeList[i], list):
