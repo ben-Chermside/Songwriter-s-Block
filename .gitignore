@@ -193,3 +193,5 @@ cython_debug/
 
 abc_files
 data
+test_encodings.abc
+test_decodings.csv
