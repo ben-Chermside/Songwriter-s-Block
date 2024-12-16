@@ -5,11 +5,10 @@ import re
 
 # TODO: HANDLE NATURALS
 
-# start of each line in csv: t,m,s,g,[x,d,o],[x,d,o] etc.
+# start of each line in csv: t,m,s,[x,d,o],[x,d,o] etc.
 # t = time signature
 # m = mode
 # s = song type
-# g = genre
 
 
 # format for each note: [x,d,o]
@@ -501,7 +500,7 @@ def parse_abc(path):
             else:
                 notes[-1][0] = '||'
 
-    encoding = [time_signature, mode, song_type, 'Swedish']
+    encoding = [time_signature, mode, song_type]
     for note in notes:
         encoding.append(note)
 
@@ -543,9 +542,6 @@ def main():
                         for element in encoded_list:
                             f_out.write(str(element) + ',')
                         f_out.write('\n')
-
-    
-
 
 if __name__ == "__main__":
     main()
