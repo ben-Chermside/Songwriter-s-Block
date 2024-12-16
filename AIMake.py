@@ -132,8 +132,8 @@ def genSaveMarkov(directory):
                 for i in range(len(testEncoding)-1):
                     trainingData.append([testEncoding[i], testEncoding[i+1]])
                 MarkModle.train(trainingData)
-    # with open("markovTest.pickle", 'wb') as file:
-    #     pickle.dump(MarkModle, file)
+    with open("markovTest.pickle", 'wb') as file:
+        pickle.dump(MarkModle, file)
 
 def toupleAafy(changeList):
     """
