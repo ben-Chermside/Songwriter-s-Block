@@ -1,7 +1,7 @@
 import os
 from tqdm import tqdm
 
-path = "data/session"
+path = "abc_files/session"
 new_path = "data/session_split"
 
 for (root, dirs, files) in os.walk(path):

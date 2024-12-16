@@ -501,7 +501,7 @@ def parse_abc(path):
             else:
                 notes[-1][0] = '||'
 
-    encoding = ['Swedish', song_type, time_signature, key, mode]
+    encoding = [time_signature, mode, song_type, 'Swedish']
     for note in notes:
         encoding.append(note)
 
@@ -514,7 +514,8 @@ def process_file(file_path):
     # try:
         encoding = parse_abc(file_path)
         print(f"Processed file: {file_path}")
-        print(encoding) 
+        print(encoding)
+        return encoding 
     # except Exception as e:
     #     print(f"Error processing file {file_path}: {e}")
 
@@ -525,20 +526,25 @@ def main():
     
     # root directory to scan for .abc files
     root_directory = sys.argv[1]
+    with open('swedish_tunes.csv', 'w') as f_out:
+        # make sure directory is valid
+        if not os.path.isdir(root_directory):
+            # print(f"Error: {root_directory} is not a valid directory.")
+            # sys.exit(1)
+            process_file(root_directory) # single file
+        else:
+        # go through all subdirectories
+            for subdir, _, files in os.walk(root_directory):
+                for file in files:
+                    if file.endswith('.abc'):
+                        # queue each .abc file
+                        file_path = os.path.join(subdir, file)
+                        encoded_list = process_file(file_path)
+                        for element in encoded_list:
+                            f_out.write(str(element) + ',')
+                        f_out.write('\n')
 
-    # make sure directory is valid
-    if not os.path.isdir(root_directory):
-        # print(f"Error: {root_directory} is not a valid directory.")
-        # sys.exit(1)
-        process_file(root_directory) # single file
-    else:
-    # go through all subdirectories
-        for subdir, _, files in os.walk(root_directory):
-            for file in files:
-                if file.endswith('.abc'):
-                    # queue each .abc file
-                    file_path = os.path.join(subdir, file)
-                    process_file(file_path)
+    
 
 
 if __name__ == "__main__":
