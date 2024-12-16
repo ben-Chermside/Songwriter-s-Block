@@ -1,7 +1,9 @@
 import sys
 import os
+import subprocess
+import re
 
-# TODO:
+# TODO: HANDLE NATURALS
 
 # start of each line in csv: t,m,s,g,[x,d,o],[x,d,o] etc.
 # t = time signature
@@ -136,12 +138,13 @@ def parse_abc(path):
                 mode = 'unspecified'
 
         # Stop reading if we encounter other types of lines after reading the first tune
-        elif '|' not in line and read_notes == True:
+        elif line.startswith('V:') and read_notes == True:
             break
 
-        elif len(line) > 1 and (line[1] != ':' or line.startswith('|:')) and (len(line) != 0 and "utf-8" not in line) and ('|' in line):
-            print(line)
+        elif len(line) > 1 and (line[1] != ':' or line.startswith('|:')) and (len(line) != 0 and "utf-8" not in line) and not (line.startswith('V:2') ):
             line = line.replace(' ', '')
+            line = re.sub(r'"[^"]*"', '', line)
+            print(line)
             adjustment = 0
             i = 0
             while i < len(line):
@@ -158,21 +161,21 @@ def parse_abc(path):
                     i += 1
 
                 # skip extra stuff enclosed in quotes
-                if c == '"':
+                elif c == '"':
                     i += 1
                     while i < len(line) and line[i] != '"':
                         i += 1
                     i += 1 
 
                 # skip extra stuff enclosed in !
-                if c == '!':
+                elif c == '!':
                     i += 1
                     while i < len(line) and line[i] != '!':
                         i += 1
                     i += 1 
 
                 # skip ornaments enclosed in {}
-                if c == '{':
+                elif c == '{':
                     i += 1
                     while i < len(line) and line[i] != '}':
                         i += 1
@@ -182,32 +185,33 @@ def parse_abc(path):
                 elif c == '|':
                     if i + 1 < len(line) and line[i + 1] == ':':  # |:
                         notes.append(['|:', 0, 0])  
-                        i += 1 
+                        
                     elif i + 1 < len(line) and line[i + 1] == '1':  # |1 
                         notes.append(['|1', 0, 0])  
-                        i += 1  
+                        
                     elif i + 1 < len(line) and line[i + 1] == '2':  # |2 
                         notes.append(['|2', 0, 0])  
-                        i += 1  
+                         
                     elif i + 1 < len(line) and line[i + 1] == '|':  # || 
                         notes.append(['||', 0, 0])  
-                        i += 1  
+                         
                     else:
                         notes.append(['|', 0, 0])  # |
+                        
                 elif c == ':':
                     if i + 1 < len(line) and line[i + 1] == '|':  
                         if i + 2 < len(line) and line[i + 2] == '1':  # ":|1"
                             notes.append([':|1', 0, 0])  
-                            i += 2
+                            i += 1
                         elif i + 2 < len(line) and line[i + 2] == '2':  # ":|2"
                             notes.append([':|2', 0, 0]) 
-                            i += 2  
+                            i += 1  
                         else:
                             notes.append([':|', 0, 0])  # :|
-                            i += 1
+                            
                     elif i + 1 < len(line) and line[i + 1] == ':':
                         notes.append(['::', 0, 0])  # ::
-                        i += 1
+                        
                 
                 # accidentals
                 elif c in "^_=":
@@ -224,6 +228,11 @@ def parse_abc(path):
 
                 # tuplets
                 elif c.isnumeric():
+                    
+                    print('TUPLET')
+                    # print(line[i])
+                    # print(c)
+
                     handled_tuplet = True
 
                     tuplet = int(c)
@@ -231,7 +240,9 @@ def parse_abc(path):
                     i += 1
                     tuplet_count = 0
 
-                    while tuplet_count < tuplet:
+                    while tuplet_count < tuplet and i < len(line):
+
+                        # print (line[i])
 
                         if line[i] in "^_=":
                             if line[i] == "^":
@@ -480,9 +491,37 @@ def parse_abc(path):
     return encoding
 
 
+
+# run the encoder on a given file
+def process_file(file_path):
+    try:
+        encoding = parse_abc(file_path)
+        print(f"Processed file: {file_path}")
+        print(encoding) 
+    except Exception as e:
+        print(f"Error processing file {file_path}: {e}")
+
+
 def main():
-    path = sys.argv[1]
-    print(parse_abc(path))
+    if len(sys.argv) != 2:
+        sys.exit(1)
+    
+    # root directory to scan for .abc files
+    root_directory = sys.argv[1]
+
+    # make sure directory is valid
+    if not os.path.isdir(root_directory):
+        # print(f"Error: {root_directory} is not a valid directory.")
+        # sys.exit(1)
+        process_file(root_directory) # single file
+    else:
+    # go through all subdirectories
+        for subdir, _, files in os.walk(root_directory):
+            for file in files:
+                if file.endswith('.abc'):
+                    # queue each .abc file
+                    file_path = os.path.join(subdir, file)
+                    process_file(file_path)
 
 
 if __name__ == "__main__":
