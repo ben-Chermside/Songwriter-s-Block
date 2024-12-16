@@ -63,8 +63,9 @@ key_mapping = {
 
 
 def parse_abc(path):
-    file = open(path, 'r')
-    file = file.readlines()
+    fileobj = open(path, 'r')
+    file = fileobj.readlines()
+    fileobj.close()
 
     time_signature = ''
     mode = ''
