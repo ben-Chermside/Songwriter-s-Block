@@ -1,9 +1,7 @@
 import sys
 import os
 
-# TODO: HANDLE TRIPLETS!
-# DEAL WITH DOTTED RHYTHMS
-# FIX OCTAVES WHEN TRANSPOSING TO C
+# TODO:
 
 # start of each line in csv: t,m,s,g,[x,d,o],[x,d,o] etc.
 # t = time signature
@@ -71,6 +69,7 @@ def parse_abc(path):
     mode = ''
     song_type = ''
     genre = ''
+    dotted_adjustment = 0
 
     key = 0 # for transposition purposes
 
@@ -97,8 +96,9 @@ def parse_abc(path):
         11: 6,
     }
 
+    read_notes = False
+
     for line in file:
-        print(line)
         # song type
         if line.startswith('R:'):
             line = line.replace(' ', '')
@@ -135,16 +135,23 @@ def parse_abc(path):
                 mode = 'locrian'
             else:
                 mode = 'unspecified'
+
+        # Stop reading if we encounter other types of lines after reading the first tune
+        elif '|' not in line and read_notes == True:
+            break
+
         elif len(line) > 1 and (line[1] != ':' or line.startswith('|:')) and (len(line) != 0 and "utf-8" not in line) and ('|' in line):
+            print(line)
             line = line.replace(' ', '')
             adjustment = 0
-
             i = 0
             while i < len(line):
 
                 note = 0
                 duration = 0
                 octave = 0
+                
+                handled_tuplet = False
 
                 c = line[i]
 
@@ -207,33 +214,132 @@ def parse_abc(path):
                 elif c in "^_=":
                     if c == "^":
                         adjustment += 1
+                        if line[i+1] == '^':
+                            adjustment += 1
                     elif c == "_":
                         adjustment -= 1
+                        if line[i+1] == '_':
+                            adjustment -= 1
                     elif c == '=':
                         adjustment = 0
+
+                # tuplets
+                elif c.isnumeric():
+                    handled_tuplet = True
+
+                    tuplet = int(c)
+                    duration = 1/tuplet
                     i += 1
+                    tuplet_count = 0
+
+                    while tuplet_count < tuplet:
+
+                        if line[i] in "^_=":
+                            if line[i] == "^":
+                                adjustment += 1
+                                if line[i+1] == '^':
+                                    adjustment += 1
+                            elif line[i] == "_":
+                                adjustment -= 1
+                                if line[i+1] == '_':
+                                    adjustment -= 1
+                            elif line[i] == '=':
+                                adjustment = 0
+
+                        
+                        elif line[i].isalpha() and line[i].upper() in note_mapping:
+                            note = note_mapping[line[i].upper()]
+                            note = (
+                                note
+                                + key_adjustments[key][note_diatonic_mapping[note]] % 12
+                            )
+
+                            note = (note - key_mapping[key])
+
+                            if note < 0:
+                                octave -= 1
+
+                            note = note % 12
+
+                            note = (
+                                note
+                                + mode_adjustments[mode][note_diatonic_mapping[note]] 
+                                + adjustment % 12
+                            )
+                            
+                            adjustment = 0
+                            
+                            if c.isupper():
+                                octave = -1
+
+                            # extra octave adjustments
+                            while i + 1 < len(line) and line[i + 1] in ["'", ","]:
+                                if line[i + 1] == "'":
+                                    octave += 1
+                                elif line[i + 1] == ",":
+                                    octave -= 1
+                                i += 1
+                            
+                            # duration
+                            while i + 1 < len(line) and (line[i + 1].isdigit() or line[i + 1] == "/"):
+                                i += 1
+                                if line[i] == "/":
+                                    duration /= 2
+                                elif line[i].isdigit():
+                                    duration *= int(line[i])
+
+                            if dotted_adjustment != 0:
+                                duration *= dotted_adjustment
+                                dotted_adjustment = 0
+                            
+                            temp_adjustment = 0
+                            temp_count = 0
+                            
+                            while i + 1 < len(line) and line[i+1] == '>':
+                                temp_count += 1
+                                temp_adjustment += (1/(2**temp_count))
+                                i += 1
+                        
+                            temp_adjustment += 1
+                            duration *= temp_adjustment
+                            dotted_adjustment = 1 - (temp_adjustment - 1)
+
+                            tuplet_count += 1
+                        
+                        i += 1
+                        notes.append([note, duration, octave])
+
 
                 # notes
                 elif c.isalpha() and c.upper() in note_mapping:
+                    # print(adjustment)
                     note = note_mapping[c.upper()]
-                    note = (
-                        note
-                        + key_adjustments[key][note_diatonic_mapping[note]] % 12
-                    )
-                    note = (note - key_mapping[key]) % 12
+
+                    diatonic_degree = note_diatonic_mapping[note]
 
                     note = (
                         note
-                        + mode_adjustments[mode][note_diatonic_mapping[note]] 
+                        + key_adjustments[key][diatonic_degree] % 12
+                    )
+
+                    note = (note - key_mapping[key])
+
+                    if note < 0:
+                        octave -= 1
+
+                    note = note % 12
+
+                    note = (
+                        note
+                        + mode_adjustments[mode][diatonic_degree] 
                         + adjustment % 12
                     )
                     
+                    adjustment = 0
                     duration = 1
                     
                     if c.isupper():
                         octave = -1
-                    else:
-                        octave = 0
 
                     # extra octave adjustments
                     while i + 1 < len(line) and line[i + 1] in ["'", ","]:
@@ -247,9 +353,25 @@ def parse_abc(path):
                     while i + 1 < len(line) and (line[i + 1].isdigit() or line[i + 1] == "/"):
                         i += 1
                         if line[i] == "/":
-                            duration /= 2 
+                            duration /= 2
                         elif line[i].isdigit():
                             duration *= int(line[i])
+
+                    if dotted_adjustment != 0:
+                         duration *= dotted_adjustment
+                         dotted_adjustment = 0
+                    
+                    temp_adjustment = 0
+                    temp_count = 0
+                    
+                    while i + 1 < len(line) and line[i+1] == '>':
+                        temp_count += 1
+                        temp_adjustment += (1/(2**temp_count))
+                        i += 1
+                
+                    temp_adjustment += 1
+                    duration *= temp_adjustment
+                    dotted_adjustment = 1 - (temp_adjustment - 1)
 
                 # chords
                 elif c == "[":
@@ -262,16 +384,39 @@ def parse_abc(path):
 
                         duration = 1
 
+                        if line[i] in "^_=":
+                            if line[i] == "^":
+                                adjustment += 1
+                                if line[i+1] == '^':
+                                    adjustment += 1
+                            elif line[i] == "_":
+                                adjustment -= 1
+                                if line[i+1] == '_':
+                                    adjustment -= 1
+                            elif line[i] == '=':
+                                adjustment = 0
+
                         # note
                         if line[i].isalpha() and line[i].upper() in note_mapping:
                             note = note_mapping[line[i].upper()]
                             note = (
                                 note
-                                + key_adjustments[key][note_diatonic_mapping[note]]
-                                + mode_adjustments[mode][note_diatonic_mapping[note]] 
-                                + adjustment
-                            )   
+                                + key_adjustments[key][note_diatonic_mapping[note]] % 12
+                            )
+
+                            note = (note - key_mapping[key])
+
+                            if note < 0:
+                                octave -= 1
+
                             note = note % 12
+
+                            note = (
+                                note
+                                + mode_adjustments[mode][note_diatonic_mapping[note]] 
+                                + adjustment % 12
+                            )
+
                             if line[i].isupper():
                                 octave = -1
                             else:
@@ -293,18 +438,35 @@ def parse_abc(path):
                                 elif line[i].isdigit():
                                     duration *= int(line[i])
 
+                            if dotted_adjustment != 0:
+                                duration *= dotted_adjustment
+                                dotted_adjustment = 0
+                            
+                            temp_adjustment = 0
+                            temp_count = 0
+                            
+                            while i + 1 < len(line) and line[i+1] == '>':
+                                temp_count += 1
+                                temp_adjustment += (1/(2**temp_count))
+                                i += 1
+                        
+                            temp_adjustment += 1
+                            duration *= temp_adjustment
+                            dotted_adjustment = 1 - (temp_adjustment - 1)
+
                             chord_notes.append([note, duration, octave])
 
                         i += 1
 
                     note = chord_notes
                     octave = 0
-
+                
                 # add encoded note
-                if not (note == 0 and duration == 0 and octave == 0):
+                if (not (note == 0 and duration == 0 and octave == 0)) and handled_tuplet == False :
                     notes.append([note, duration, octave])
-                adjustment
+                    read_notes = True
                 i += 1
+                
 
     if notes[-1][0] != '||':
         if notes[-1][0] == ':|':
