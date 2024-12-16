@@ -58,12 +58,16 @@ key_mapping = {
     "Ab": 8,
     "A": 9,
     "Bb": 10,
-    "B": 11
+    "B": 11,
+    "Cb": 11
 }
 
 
 def parse_abc(path):
-    fileobj = open(path, 'r')
+
+    print('CURRENT PATH: ' + path)
+
+    fileobj = open(path, 'r', encoding='utf-8')
     file = fileobj.readlines()
     fileobj.close()
 
@@ -73,7 +77,7 @@ def parse_abc(path):
     genre = ''
     dotted_adjustment = 0
 
-    key = 0 # for transposition purposes
+    key = '' # for transposition purposes
 
     notes = []
 
@@ -99,8 +103,14 @@ def parse_abc(path):
     }
 
     read_notes = False
+    read_key = False
+    read_default_note_duration = False
 
     for line in file:
+
+        if '"@-20,30 Stämn."' in line:
+            break
+
         # song type
         if line.startswith('R:'):
             line = line.replace(' ', '')
@@ -109,21 +119,36 @@ def parse_abc(path):
         elif line.startswith('M:'):
             line = line.replace(' ', '')
             time_signature = line[2:].strip()
+        # default note duration
+        elif line.startswith('L:'):
+            read_default_note_duration = True
         # key and mode
         elif line.startswith('K:'):
+
+            read_key = True
+
             line = line.replace(' ', '')
             line = line.lower()
 
             key = line[2].upper()
 
-            if len(line) > 2 and line[3] == '#':
-                key += '#'
-            if len(line) > 2 and line[3] == 'b':
-                key += 'b'
+            print('Line length: ' + str(len(line)))
 
-            if 1 <= len(line[2:]) <= 2:
-                mode = 'major'
-            elif 'min' in line or 'm' in line:
+            if len(line) > 3:
+                if line[3] == '#':
+                    key += '#'
+                elif line[3] == 'b':
+                    key += 'b'
+            else:
+                key = 'C'
+
+            if key == 'N':
+                key = 'C'
+
+            print('KEY: ' + key)
+
+            
+            if 'min' in line or 'm' in line:
                 mode = 'minor'
             elif 'dor' in line:
                 mode = 'dorian'
@@ -136,15 +161,16 @@ def parse_abc(path):
             elif 'loc' in line:
                 mode = 'locrian'
             else:
-                mode = 'unspecified'
+                mode = 'major'
 
         # Stop reading if we encounter other types of lines after reading the first tune
         elif line.startswith('V:') and read_notes == True:
             break
 
-        elif len(line) > 1 and (line[1] != ':' or line.startswith('|:')) and (len(line) != 0 and "utf-8" not in line) and not (line.startswith('V:2') ):
+        elif len(line) > 1 and (line[1] != ':' or line.startswith('|:')) and (len(line) != 0 and "utf-8" not in line) and not (line.startswith('V:2') or line.startswith('%')) and read_key and read_default_note_duration:
             line = line.replace(' ', '')
             line = re.sub(r'"[^"]*"', '', line)
+            line = re.sub(r'![^!]*!', '', line)
             print(line)
             adjustment = 0
             i = 0
@@ -161,20 +187,6 @@ def parse_abc(path):
                 if c == ' ':
                     i += 1
 
-                # skip extra stuff enclosed in quotes
-                elif c == '"':
-                    i += 1
-                    while i < len(line) and line[i] != '"':
-                        i += 1
-                    i += 1 
-
-                # skip extra stuff enclosed in !
-                elif c == '!':
-                    i += 1
-                    while i < len(line) and line[i] != '!':
-                        i += 1
-                    i += 1 
-
                 # skip ornaments enclosed in {}
                 elif c == '{':
                     i += 1
@@ -186,16 +198,16 @@ def parse_abc(path):
                 elif c == '|':
                     if i + 1 < len(line) and line[i + 1] == ':':  # |:
                         notes.append(['|:', 0, 0])  
-                        
+                        i += 1
                     elif i + 1 < len(line) and line[i + 1] == '1':  # |1 
                         notes.append(['|1', 0, 0])  
-                        
+                        i += 1
                     elif i + 1 < len(line) and line[i + 1] == '2':  # |2 
                         notes.append(['|2', 0, 0])  
-                         
+                        i += 1
                     elif i + 1 < len(line) and line[i + 1] == '|':  # || 
                         notes.append(['||', 0, 0])  
-                         
+                        i += 1
                     else:
                         notes.append(['|', 0, 0])  # |
                         
@@ -203,16 +215,16 @@ def parse_abc(path):
                     if i + 1 < len(line) and line[i + 1] == '|':  
                         if i + 2 < len(line) and line[i + 2] == '1':  # ":|1"
                             notes.append([':|1', 0, 0])  
-                            i += 1
+                            i += 2
                         elif i + 2 < len(line) and line[i + 2] == '2':  # ":|2"
                             notes.append([':|2', 0, 0]) 
-                            i += 1  
+                            i += 2
                         else:
                             notes.append([':|', 0, 0])  # :|
-                            
+                            i += 1
                     elif i + 1 < len(line) and line[i + 1] == ':':
                         notes.append(['::', 0, 0])  # ::
-                        
+                        i += 1
                 
                 # accidentals
                 elif c in "^_=":
@@ -230,7 +242,7 @@ def parse_abc(path):
                 # tuplets
                 elif c.isnumeric():
                     
-                    print('TUPLET')
+                    # print('TUPLET')
                     # print(line[i])
                     # print(c)
 
@@ -260,9 +272,11 @@ def parse_abc(path):
                         
                         elif line[i].isalpha() and line[i].upper() in note_mapping:
                             note = note_mapping[line[i].upper()]
+                            diatonic_degree = note_diatonic_mapping[note]
+
                             note = (
                                 note
-                                + key_adjustments[key][note_diatonic_mapping[note]] % 12
+                                + key_adjustments[key][diatonic_degree] % 12
                             )
 
                             note = (note - key_mapping[key])
@@ -274,7 +288,7 @@ def parse_abc(path):
 
                             note = (
                                 note
-                                + mode_adjustments[mode][note_diatonic_mapping[note]] 
+                                + mode_adjustments[mode][diatonic_degree] 
                                 + adjustment % 12
                             )
                             
@@ -410,9 +424,11 @@ def parse_abc(path):
                         # note
                         if line[i].isalpha() and line[i].upper() in note_mapping:
                             note = note_mapping[line[i].upper()]
+                            diatonic_degree = note_diatonic_mapping[note]
+
                             note = (
                                 note
-                                + key_adjustments[key][note_diatonic_mapping[note]] % 12
+                                + key_adjustments[key][diatonic_degree] % 12
                             )
 
                             note = (note - key_mapping[key])
@@ -424,7 +440,7 @@ def parse_abc(path):
 
                             note = (
                                 note
-                                + mode_adjustments[mode][note_diatonic_mapping[note]] 
+                                + mode_adjustments[mode][diatonic_degree] 
                                 + adjustment % 12
                             )
 
@@ -478,12 +494,12 @@ def parse_abc(path):
                     read_notes = True
                 i += 1
                 
-
-    if notes[-1][0] != '||':
-        if notes[-1][0] == ':|':
-            notes[-1][0] = ':||'
-        else:
-            notes[-1][0] = '||'
+    if notes != []: 
+        if notes[-1][0] != '||':
+            if notes[-1][0] == ':|':
+                notes[-1][0] = ':||'
+            else:
+                notes[-1][0] = '||'
 
     encoding = ['Swedish', song_type, time_signature, key, mode]
     for note in notes:
@@ -495,12 +511,12 @@ def parse_abc(path):
 
 # run the encoder on a given file
 def process_file(file_path):
-    try:
+    # try:
         encoding = parse_abc(file_path)
         print(f"Processed file: {file_path}")
         print(encoding) 
-    except Exception as e:
-        print(f"Error processing file {file_path}: {e}")
+    # except Exception as e:
+    #     print(f"Error processing file {file_path}: {e}")
 
 
 def main():
