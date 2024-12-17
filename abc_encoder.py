@@ -71,7 +71,7 @@ def parse_abc(path):
 
     time_signature = ''
     mode = ''
-    song_type = ''
+    song_type = 'none'
     genre = ''
     dotted_adjustment = 0
 
@@ -107,10 +107,9 @@ def parse_abc(path):
     for line in file:
 
         if '"@-20,30 Stämn."' in line:
-            break
-
+            continue
         # song type
-        if line.startswith('R:'):
+        elif line.startswith('R:'):
             line = line.replace(' ', '')
             song_type = line[2:].strip()
         # time signature
@@ -121,7 +120,7 @@ def parse_abc(path):
         elif line.startswith('L:') or line.startswith('Q:'):
             read_default_note_duration = True
         # key and mode
-        elif line.startswith('K:') and read_key == False:
+        elif (line.startswith('K:')) and read_key == False:
 
             read_key = True
 
@@ -169,7 +168,8 @@ def parse_abc(path):
               (line[1] != ':' or line.startswith('|:')) and
               (len(line) != 0 and "utf-8" not in line) and
               not (line.startswith('V:2') or line.startswith('%'))
-              and read_key):
+              and read_key
+              ):
             line = line.replace(' ', '')
             line = re.sub(r'"[^"]*"', '', line)
             line = re.sub(r'![^!]*!', '', line)
@@ -517,6 +517,7 @@ def parse_abc(path):
                 notes[-1][0] = '||'
 
     encoding = [time_signature, mode, song_type]
+
     for note in notes:
         encoding.append(note)
 
@@ -566,7 +567,7 @@ def main():
                                 if element != '':
                                     element_without_commas = str(element).replace(",", '')
                                     f_out.write(str(element_without_commas) + ', ')
-                            f_out.write('\n')
+                            f_out.write(file_path + '\n')
 
 if __name__ == "__main__":
     main()
