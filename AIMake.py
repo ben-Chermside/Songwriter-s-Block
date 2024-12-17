@@ -128,15 +128,16 @@ class markov:
     def __init__(self, seed=0):
         self.seed = seed
         self.rng = random.Random(self.seed)
+        self.states = {}
     def train(self, data):
         """
         data must be in the form of a list or touple of lists of 
         touples that contain a token and what token followed it
         """
-        self.states = {}
         for datum in data:
             datamSeen = self.states.get(datum[0])
             if datamSeen == None:
+                #print("adding", datum)
                 self.states[datum[0]] = markovState(datum[0], seed=(self.rng.random())*10000)
             self.states[datum[0]].encounterToken(datum[1])
     def gen(self, token):
@@ -145,12 +146,16 @@ class markov:
         """
         tokenState = self.states.get(token)
         if tokenState != None:
+            #print("bug did not happen")
             return self.states[token].goToNextToken()
         else:
-            print("note, feture not in data, if this happenes often it may be a bug")
-            print("token is", token)
+            # print("note, feture not in data, if this happenes often it may be a bug")
+            # print("token is", token)
             #print("possibleTokens are", self.states)
             #sys.exit()
+            # for possibleStates in self.states:
+                # print("all states are")
+                # print(possibleStates, type(possibleStates))
             for possibleState in self.states:
                 return self.states[possibleState].goToNextToken()
 
@@ -159,28 +164,29 @@ class markov:
 
 def genSaveMarkov():
     MarkModle = markov()
-    
     data = open("./swedish_tunes.csv").read()
     data = data.split("\n")
     for i in range(len(data)):
         data[i] = data[i].split(",")
     random.seed(0)
     random.shuffle(data)
-    takeIndex = int(len(data)*.8)
+    TrainDataStart = int(len(data)*.8)
+
     for i in range(len(data)):
-        currLine = data[i]
         data[i] = data[i][3:]
-        for tokenIndex in range(len(currLine)):
+        for tokenIndex in range(len(data[i])):
             data[i][tokenIndex] = data[i][tokenIndex][2:len(data[i][tokenIndex])-1]
             data[i][tokenIndex] = data[i][tokenIndex].split(" ")
             data[i][tokenIndex] = toupleAafy(data[i][tokenIndex])
-        if i<tokenIndex:
+        if i<TrainDataStart:
             toTrain = []
-            for tokenIndex in range(len(currLine)-1):
-                toTrain.append((currLine[tokenIndex], currLine[tokenIndex+1]))
+            for tokenIndex in range(len(data[i])-1):
+                if data[i][tokenIndex+1] != "":
+                    toTrain.append((data[i][tokenIndex], data[i][tokenIndex+1]))
             MarkModle.train(toTrain)
-    
-    testIngAccuracy(MarkModle, data[tokenIndex:])
+
+    testIngAccuracy(MarkModle, data[TrainDataStart:])
+    #print("size is", len(MarkModle.states))
     
 
     with open("markovTest.pickle", 'wb') as file:
@@ -203,16 +209,48 @@ def testIngAccuracy(modle, testData):
         currLine = testData[i]
         for test in range(len(currLine)-1):
             perdiction = modle.gen(currLine[test])
+            # print("perdiction is", perdiction)
+            # print("nextToken is", currLine[test+1])
             if perdiction == currLine[test+1]:
+                #print("found Equal")
                 numTestsPassed = numTestsPassed + 1
             numTests = numTests + 1
     print("out of ", numTests, numTestsPassed, "passed")
     print("this test accuracy is ", numTestsPassed/numTests)
 
+def MarkovGen(startToken, length=None):
+    """
+    pass this a starting token and optionaly a lenght
+    startToken= the token that will start the chain, either as a list or as a touple(not as a string)
+    lenght the length of the result as an int(including inital token), if not specifyed or None will keep going until an end token is genorated
+    returns the a list of tokens. Each token is in TOUPLE form.
+    uese the pickeled markov modle.
+    """
+    if isinstance(startToken, list):
+        startToken = toupleAafy(startToken)
+    with open('markovTest.pickle', 'rb') as file:
+        markovModle = pickle.load(file)
+    if length == None:
+        genList = [startToken]
+        while genList[-1] != (":||", "0", "0"):
+            nextGen = markovModle.gen(genList[-1])
+            genList.append(nextGen)
+    else:
+        genList = [startToken]
+        for i in range(1, length):
+            nextGen = markovModle.gen(genList[-1])
+            genList.append(nextGen)
+    return genList
+
+
+
+
 
 if __name__ == "__main__":
     print("hellow world")
-    genSaveMarkov()#abc is the name of the directory I have the abc files,
+    #genSaveMarkov()
+    genList = MarkovGen((5, 2, 0), 20)
+    print(genList)
 
 
 
