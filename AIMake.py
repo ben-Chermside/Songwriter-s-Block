@@ -6,6 +6,7 @@ import pickle
 from abc_encoder import parse_abc
 import os
 import sys
+import math
 
 # class modle:
 #     def __init__(self, possableTokens, seed=None, tokenSize=6):
@@ -23,8 +24,39 @@ import sys
 
 
 
-def makeTrainingSet(data, trainPrecentage=.8):
-    pass
+def makeTrainingSet(datapath, trainPrecentage=.8):
+    data = open(datapath).read()
+    data = data.split("\n")
+    maxLen = 0
+    if data[-1] == "":
+        data.pop()
+    allInts = set()
+    for i in range(len(data)):
+        data[i] = data[i].split(",")
+    for i in range(len(data)):
+        lineLen = len(data[i])
+        if lineLen > maxLen:
+            maxLen = lineLen
+        for j in range(lineLen):
+            data[i][j] = int(data[i][j])
+            allInts.add(data[i][j])
+    allInts = list(allInts)
+    allInts.sort()
+    maxData = allInts[-1]#maxData will be expected to be 1177
+    maxDataBig = maxData + 1
+    for i in range(len(data)):#This adds the next int up to the start of each line so all songs are the same size
+        lineStart = (maxLen*len(data[i]))*[maxDataBig]
+        data[i] = lineStart + data[i]
+    
+    return data, maxDataBig
+
+
+
+    
+    
+
+
+
     # data = open("./swedish_tunes.csv").read()
     # data = data.split("\n")
     # dataSize = len(data)
@@ -44,45 +76,52 @@ def makeTrainingSet(data, trainPrecentage=.8):
     #     #currDataSet[3]
 
 
-    for filename in os.listdir(directory):
-        filepath = os.path.join(directory, filename)
-        if os.path.isfile(filepath):
-            worked = False
-            try:
-                testEncoding = parse_abc(filepath)
-                worked = True
-            except KeyError: #I encountered an error on some of the parcings, this may change if parce_abc() is updated
-                print("encountered key error")
-            except Exception:
-                print("unspecifyed exception on file", filepath)
-            if worked:
-                pass
+    # for filename in os.listdir(directory):
+    #     filepath = os.path.join(directory, filename)
+    #     if os.path.isfile(filepath):
+    #         worked = False
+    #         try:
+    #             testEncoding = parse_abc(filepath)
+    #             worked = True
+    #         except KeyError: #I encountered an error on some of the parcings, this may change if parce_abc() is updated
+    #             print("encountered key error")
+    #         except Exception:
+    #             print("unspecifyed exception on file", filepath)
+    #         if worked:
+    #             pass
         
 
 
 
-
-def trainModleTransformer(data, numEpocs=1000, lernRate=0.001):
+def trainModleTransformer(dataPath, numEpocs=1000, lernRate=0.001):
     """
     trains a transformer model on the data, 
     returns the model
     """
 
-    trainX, trainY = makeTrainingSet(data)
+    #trainX, trainY = makeTrainingSet(dataPath)
 
-    modle = torch.nn.Transformer(d_modle=256)
-    crLoss = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(modle.parameters(), lr=lernRate)
+    data, maxToken = makeTrainingSet(dataPath, 0.8)
+    lineLen = len(data[0])
+    numBatches = 50
+    batchSize = math.ceil(len(data)/numBatches)
 
-    for epoc in range(numEpocs):
-        train_predictions = network(train_X)
-        train_loss = crLoss(train_predictions, train_y)
-        optimizer.zero_grad()
-        train_loss.backward()
-        optimizer.step()
+    embedding_dim = 256
+    transformer = torch.nn.Transformer()
+    optimizer = torch.optim.Adam(transformer.parameters(), lr=lernRate)
+    criterion = torch.nn.CrossEntropyLoss(ignore_index=maxToken)
+    for i in range(numEpocs):
+        for batchNum in range(numBatches):
+            currBatch = []
+            for batchInd in range(batchSize):
+                currIndex = batchNum*batchSize+batchInd
+                currBatch.append(data[currIndex])
+            output = transformer(currBatch)
+            loss = criterion(output)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-
-    return modle
 
 class markovState:
     """
@@ -280,8 +319,10 @@ def MarkivToString(startToken, length=None):
 if __name__ == "__main__":
     print("hellow world")
     #genSaveMarkov()
-    genList = MarkivToString((5, 2, 0), 20)
-    print(genList)
+    #genList = MarkivToString((5, 2, 0), 20)
+    #sprint(genList)
+    #makeTrainingSet("./swedish_tunes_int.csv")
+    trainModleTransformer("./swedish_tunes_int.csv")
 
 
 
