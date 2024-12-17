@@ -1,6 +1,7 @@
 import sklearn.neural_network as nn
 import pandas
 import random
+import pickle
 
 
 def makeMPL(training_X, training_y, possibleTokens):
@@ -108,5 +109,8 @@ if __name__ == "__main__":
     training_X, training_y, testing_X, testing_y  = getData(df)
     MLP = makeMPL(training_X, training_y, None)
     result = MLP.score(testing_X, testing_y)
+    with open("MLPC.pickle", 'wb') as file:
+        pickle.dump(MLP, file)
+
     print("score is", result)
     
