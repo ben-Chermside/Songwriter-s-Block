@@ -91,6 +91,29 @@ def makeTrainingSet(datapath, trainPrecentage=.8):
     #             pass
         
 
+def batchify(data, bsz):
+    # Work out how cleanly we can divide the dataset into bsz parts.
+    nbatch = data.size(0) // bsz
+    # Trim off any extra elements that wouldn't cleanly fit (remainders).
+    data = data.narrow(0, 0, nbatch * bsz)
+    # Evenly divide the data across the bsz batches.
+    data = data.view(bsz, -1).t().contiguous()
+    return data#.to(device)
+
+
+def repackage_hidden(h):
+    """Wraps hidden states in new Tensors, to detach them from their history."""
+
+    if isinstance(h, torch.Tensor):
+        return h.detach()
+    else:
+        return tuple(repackage_hidden(v) for v in h)
+
+def get_batch(source, i):
+    seq_len = min(35, len(source) - 1 - i)
+    data = source[i:i+seq_len]
+    target = source[i+1:i+1+seq_len].view(-1)
+    return data, target
 
 
 def trainModleTransformer(dataPath, numEpocs=1000, lernRate=0.001):
@@ -103,11 +126,20 @@ def trainModleTransformer(dataPath, numEpocs=1000, lernRate=0.001):
 
     data, maxToken = makeTrainingSet(dataPath, 0.8)
     lineLen = len(data[0])
-    numBatches = 50
-    batchSize = math.ceil(len(data)/numBatches)
+    # numBatches = 50
+    # batchSize = math.ceil(len(data)/numBatches)
+    eval_batch_size = 10
+    corpus = data.Corpus(data)
+
+    train_data = batchify(corpus.train, 20)
+    val_data = batchify(corpus.valid, eval_batch_size)
+    test_data = batchify(corpus.test, eval_batch_size)
 
     embedding_dim = 256
     transformer = torch.nn.Transformer()
+    model = model.TransformerModel(maxToken+1, 200, 2, 200, 2, 0.2)#.to(device)
+
+
     optimizer = torch.optim.Adam(transformer.parameters(), lr=lernRate)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=maxToken)
     for i in range(numEpocs):
@@ -121,6 +153,41 @@ def trainModleTransformer(dataPath, numEpocs=1000, lernRate=0.001):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+    lr = lernRate
+
+
+    model.train()
+    total_loss = 0.
+    ntokens = len(corpus.dictionary)
+    for batch, i in enumerate(range(0, train_data.size(0) - 1, 35)):
+        data, targets = get_batch(train_data, i)
+        # Starting each batch, we detach the hidden state from how it was previously produced.
+        # If we didn't, the model would try backpropagating all the way to start of the dataset.
+        model.zero_grad()
+        output = model(data)
+        output = output.view(-1, ntokens)
+        loss = criterion(output, targets)
+        loss.backward()
+
+        # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
+        torch.nn.utils.clip_grad_norm_(model.parameters(), .25)
+        for p in model.parameters():
+            p.data.add_(p.grad, alpha=-lr)
+
+        total_loss += loss.item()
+
+        if batch % 200 == 0 and batch > 0:
+            cur_loss = total_loss / 200
+            # #print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
+            #         'loss {:5.2f} | ppl {:8.2f}'.format(
+            #     epoch, batch, len(train_data) // args.bptt, lr,
+            #     elapsed * 1000 / 200, cur_loss, math.exp(cur_loss)))
+            total_loss = 0
+            #start_time = time.time()
+        if not True:
+            break
+    return model
 
 
 class markovState:
@@ -322,7 +389,8 @@ if __name__ == "__main__":
     #genList = MarkivToString((5, 2, 0), 20)
     #sprint(genList)
     #makeTrainingSet("./swedish_tunes_int.csv")
-    trainModleTransformer("./swedish_tunes_int.csv")
+    modle = trainModleTransformer("./swedish_tunes_int.csv")
+    
 
 
 
