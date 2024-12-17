@@ -246,11 +246,19 @@ def MarkovGen(startToken, length=None):
 def MarkivToString(startToken, length=None):
     """
     pass this a starting token and optionaly a lenght
-    startToken= the token that will start the chain, either as a list or as a touple(not as a string)
+    startToken= the token that will start the chain, either as a list or as a touple or as a string(yep, any of those should work)
     lenght the length of the result as an int(including inital token), if not specifyed or None will keep going until an end token is genorated
-    returns the a list of tokens. Each token is in TOUPLE form.
+    returns strings
     uese the pickeled markov modle.
     """
+    if isinstance(startToken, str):
+        startTokenList = []
+        startToken = startToken[2:len(startToken)-1]
+        startToken = startToken.split(" ")
+        for element in startToken:
+            startTokenList.append(element)
+        startToken = toupleAafy(startTokenList)
+
     generated = MarkovGen(startToken, length=length)
     output = "2/4, major, Engelska, "
     for elem in generated:
