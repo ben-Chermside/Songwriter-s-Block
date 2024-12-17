@@ -118,7 +118,7 @@ def parse_abc(path):
             line = line.replace(' ', '')
             time_signature = line[2:].strip()
         # default note duration
-        elif line.startswith('L:'):
+        elif line.startswith('L:') or line.startswith('Q:'):
             read_default_note_duration = True
         # key and mode
         elif line.startswith('K:') and read_key == False:
@@ -165,7 +165,11 @@ def parse_abc(path):
         elif line.startswith('V:') and read_notes == True:
             break
 
-        elif len(line) > 1 and (line[1] != ':' or line.startswith('|:')) and (len(line) != 0 and "utf-8" not in line) and not (line.startswith('V:2') or line.startswith('%')) and read_key and read_default_note_duration:
+        elif (len(line) > 1 and
+              (line[1] != ':' or line.startswith('|:')) and
+              (len(line) != 0 and "utf-8" not in line) and
+              not (line.startswith('V:2') or line.startswith('%'))
+              and read_key):
             line = line.replace(' ', '')
             line = re.sub(r'"[^"]*"', '', line)
             line = re.sub(r'![^!]*!', '', line)
@@ -538,7 +542,7 @@ def main():
     # root directory to scan for .abc files
     output_path = sys.argv[1]
     root_directory = sys.argv[2]
-    with open(output_path, 'w') as f_out:
+    with open(output_path, 'w', encoding='utf-8') as f_out:
         # make sure directory is valid
         if not os.path.isdir(root_directory):
             # single file
