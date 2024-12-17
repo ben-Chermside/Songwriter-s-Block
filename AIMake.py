@@ -218,10 +218,39 @@ def testIngAccuracy(modle, testData):
     print("out of ", numTests, numTestsPassed, "passed")
     print("this test accuracy is ", numTestsPassed/numTests)
 
+def MarkovGen(startToken, length=None):
+    """
+    pass this a starting token and optionaly a lenght
+    startToken= the token that will start the chain, either as a list or as a touple(not as a string)
+    lenght the length of the result as an int(including inital token), if not specifyed or None will keep going until an end token is genorated
+    returns the a list of tokens. Each token is in TOUPLE form.
+    uese the pickeled markov modle.
+    """
+    if isinstance(startToken, list):
+        startToken = toupleAafy(startToken)
+    with open('markovTest.pickle', 'rb') as file:
+        markovModle = pickle.load(file)
+    if length == None:
+        genList = [startToken]
+        while genList[-1] != (":||", "0", "0"):
+            nextGen = markovModle.gen(genList[-1])
+            genList.append(nextGen)
+    else:
+        genList = [startToken]
+        for i in range(1, length):
+            nextGen = markovModle.gen(genList[-1])
+            genList.append(nextGen)
+    return genList
+
+
+
+
 
 if __name__ == "__main__":
     print("hellow world")
-    genSaveMarkov()#abc is the name of the directory I have the abc files,
+    #genSaveMarkov()
+    genList = MarkovGen((5, 2, 0), 20)
+    print(genList)
 
 
 
