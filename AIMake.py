@@ -243,13 +243,36 @@ def MarkovGen(startToken, length=None):
     return genList
 
 
+def MarkivToString(startToken, length=None):
+    """
+    pass this a starting token and optionaly a lenght
+    startToken= the token that will start the chain, either as a list or as a touple(not as a string)
+    lenght the length of the result as an int(including inital token), if not specifyed or None will keep going until an end token is genorated
+    returns the a list of tokens. Each token is in TOUPLE form.
+    uese the pickeled markov modle.
+    """
+    generated = MarkovGen(startToken, length=length)
+    output = "2/4, major, Engelska, "
+    for elem in generated:
+        output = output + "["
+        for sumElemIndex in range(len(elem)):
+            subElem = elem[sumElemIndex]
+            output = output + str(subElem)
+            if sumElemIndex<len(elem)-1:
+                output = output + " "
+            else:
+                output = output + "], "
+    output = output[0:len(output)-1]
+    return output
+
+
 
 
 
 if __name__ == "__main__":
     print("hellow world")
     #genSaveMarkov()
-    genList = MarkovGen((5, 2, 0), 20)
+    genList = MarkivToString((5, 2, 0), 20)
     print(genList)
 
 
