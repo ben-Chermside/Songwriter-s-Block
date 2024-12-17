@@ -567,7 +567,7 @@ def main():
                                 if element != '':
                                     element_without_commas = str(element).replace(",", '')
                                     f_out.write(str(element_without_commas) + ', ')
-                            f_out.write(file_path + '\n')
+                            f_out.write('\n')
 
 if __name__ == "__main__":
     main()
