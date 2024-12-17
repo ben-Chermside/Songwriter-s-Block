@@ -8,17 +8,20 @@ parser.add_argument('-r', '--reverse', action='store_true')
 
 args = parser.parse_args()
 
+input_file = args.input_file.readlines()
 output_file = args.output_file
+output = []
 
 translation = []
 translation_file = args.translation_file.readlines()
 for line in translation_file:
     translation.append(line)
 
-input_file = args.input_file.readlines()
 
 for line in input_file:
+    output.append('')
     line_tokens = line.split(',')
+    line_tokens.pop()
     for token in line_tokens:
         token = token.strip()
         if args.reverse:
@@ -31,8 +34,11 @@ for line in input_file:
                 translation.append(token)
                 translated = len(translation) - 1
         # Write int, to new file
-        output_file.write(str(translated) + ', ')
-    output_file.write('\n')
+        output[-1] += str(translated) + ','
+    output[-1] = output[-1].rstrip(",")
+    output[-1] += '\n'
+
+output_file.writelines(output)
 
 # Dump new translation file to same pathname
 translation_file = args.translation_file
