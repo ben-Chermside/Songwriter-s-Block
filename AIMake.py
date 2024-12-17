@@ -7,6 +7,7 @@ from abc_encoder import parse_abc
 import os
 import sys
 import math
+from plotnine import *
 
 # class modle:
 #     def __init__(self, possableTokens, seed=None, tokenSize=6):
@@ -321,10 +322,11 @@ def testIngAccuracy(modle, testData):
                 #print("found Equal")
                 numTestsPassed = numTestsPassed + 1
             numTests = numTests + 1
-    print("out of ", numTests, numTestsPassed, "passed")
-    print("this test accuracy is ", numTestsPassed/numTests)
+    # print("out of ", numTests, numTestsPassed, "passed")
+    # print("this test accuracy is ", numTestsPassed/numTests)
+    return numTestsPassed/numTests
 
-def MarkovGen(startToken, length=None):
+def MarkovGen(startToken, length):
     """
     pass this a starting token and optionaly a lenght
     startToken= the token that will start the chain, either as a list or as a touple(not as a string)
@@ -334,9 +336,12 @@ def MarkovGen(startToken, length=None):
     """
     if isinstance(startToken, list):
         startToken = toupleAafy(startToken)
+    print("loading pickle")
     with open('markovTest.pickle', 'rb') as file:
         markovModle = pickle.load(file)
+    print("pickle loded")
     if length == None:
+        print("entered while loop")
         genList = [startToken]
         while genList[-1] != (":||", "0", "0"):
             nextGen = markovModle.gen(genList[-1])
@@ -365,7 +370,8 @@ def MarkivToString(startToken, length=None):
             startTokenList.append(element)
         startToken = toupleAafy(startTokenList)
 
-    generated = MarkovGen(startToken, length=length)
+    generated = MarkovGen(startToken, length)
+    print("gened", generated)
     output = "2/4, major, Engelska, "
     for elem in generated:
         output = output + "["
@@ -380,6 +386,54 @@ def MarkivToString(startToken, length=None):
     return output
 
 
+def PlotnineResults():
+    MarkModle = markov()
+    data = open("./swedish_tunes.csv").read()
+    data = data.split("\n")
+    for i in range(len(data)):
+        data[i] = data[i].split(",")
+    random.seed(0)
+    random.shuffle(data)
+    TrainDataStart = int(len(data)*.8)
+    testData = data[TrainDataStart:]
+    resultData = {"percentTrained":[], "accuracy":[]}
+    for i in range(len(testData)):
+        testData[i] = testData[i][3:]
+        for tokenIndex in range(len(testData[i])):
+            testData[i][tokenIndex] = testData[i][tokenIndex][2:len(testData[i][tokenIndex])-1]
+            testData[i][tokenIndex] = testData[i][tokenIndex].split(" ")
+            testData[i][tokenIndex] = toupleAafy(testData[i][tokenIndex])
+
+
+    for i in range(len(data)):
+        data[i] = data[i][3:]
+        for tokenIndex in range(len(data[i])):
+            data[i][tokenIndex] = data[i][tokenIndex][2:len(data[i][tokenIndex])-1]
+            data[i][tokenIndex] = data[i][tokenIndex].split(" ")
+            data[i][tokenIndex] = toupleAafy(data[i][tokenIndex])
+        if i<TrainDataStart:
+            toTrain = []
+            for tokenIndex in range(len(data[i])-1):
+                if data[i][tokenIndex+1] != "":
+                    toTrain.append((data[i][tokenIndex], data[i][tokenIndex+1]))
+            MarkModle.train(toTrain)
+            if i%100 == 0 or (i<100):
+                currAccuracy = testIngAccuracy(MarkModle, testData)
+                resultData["percentTrained"].append(i/TrainDataStart)
+                resultData["accuracy"].append(currAccuracy)
+                
+    resultData["percentTrained"].append(1)
+    resultData["accuracy"].append(testIngAccuracy(MarkModle, testData))
+    df = pandas.DataFrame(resultData)
+    p = (
+    ggplot(df, aes(y="accuracy", x="percentTrained"))
+    + geom_line()
+    )
+    
+    p.save(filename=("MarkovProg.png"))
+
+
+    
 
 
 
@@ -389,8 +443,9 @@ if __name__ == "__main__":
     #genList = MarkivToString((5, 2, 0), 20)
     #sprint(genList)
     #makeTrainingSet("./swedish_tunes_int.csv")
-    modle = trainModleTransformer("./swedish_tunes_int.csv")
-    
+    #modle = trainModleTransformer("./swedish_tunes_int.csv")
+    print(MarkivToString((5, 2, 0), 20))
+
 
 
 
