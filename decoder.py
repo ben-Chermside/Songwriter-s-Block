@@ -52,6 +52,7 @@ def parse_token(item):
             # duration
             if dotted == False and tuplet_counter == tuplet:
                 # check for tuplets
+                # TODO: Handle 0.6666666666 and stuff like that
                 if item[1] == (1/3):
                     tuplet = 3
                     note = '(3' + note
@@ -78,7 +79,17 @@ def parse_token(item):
                     note += '/>'
                     dotted = True
                 else:   
-                    note += str(item[1])
+                    if item[1] < 1:
+                        if item[1] == 0.5:
+                            note += '/'
+                        elif item[1] == 0.25:
+                            note += '//'
+                        elif item[1] == 0.125:
+                            note += '///'
+                        else: 
+                            note += str(item[1])
+                    else:
+                        note += str(item[1])
             else:
                 if tuplet_counter != tuplet:
                     tuplet_counter += 1
@@ -135,7 +146,7 @@ def add_newlines_after_bars(abc_text):
         bar_section, rest = match.groups()
         return f"{bar_section}\n{rest}"
 
-    return re.sub(r"((?:.*?\|){4})([^|\d])", replacer, abc_text).strip()
+    return re.sub(r"((?:.*?\|){4})([^|\d])", replacer, abc_text)
 
 
 def data_to_list(file_path):
@@ -164,7 +175,6 @@ def data_to_list(file_path):
     
 
 def main():
-    dotted = False
     if len(sys.argv) != 3:
         sys.exit(1)
     
@@ -176,7 +186,7 @@ def main():
     data_list = data_to_list(input_path)
 
     for list in data_list:
-        output += str(decode(list)).strip() + '\n'
+        output += str(decode(list)) + '\n'
     
 
     with open(output_path, 'w') as f_out:

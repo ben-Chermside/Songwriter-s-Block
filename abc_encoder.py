@@ -238,7 +238,7 @@ def parse_abc(path):
                         adjustment = 0
 
                 # tuplets
-                elif c.isnumeric():
+                elif c == '(' and line[i + 1].isnumeric():
                     
                     # print('TUPLET')
                     # print(line[i])
@@ -246,14 +246,14 @@ def parse_abc(path):
 
                     handled_tuplet = True
 
-                    tuplet = int(c)
+                    tuplet = int(line[i + 1])
                     duration = 1/tuplet
-                    i += 1
+                    i += 2
                     tuplet_count = 0
 
                     while tuplet_count < tuplet and i < len(line):
 
-                        # print (line[i])
+                        print (line[i])
 
                         if line[i] in "^_=":
                             if line[i] == "^":
@@ -291,7 +291,7 @@ def parse_abc(path):
                             )
                             
                             adjustment = 0
-                            
+
                             if c.isupper():
                                 octave = -1
 
@@ -310,6 +310,7 @@ def parse_abc(path):
                                     duration /= 2
                                 elif line[i].isdigit():
                                     duration *= int(line[i])
+                                    print(duration)
 
                             if dotted_adjustment != 0:
                                 duration *= dotted_adjustment
@@ -331,6 +332,8 @@ def parse_abc(path):
                         
                         i += 1
                         notes.append([note, duration, octave])
+                        duration = 1/tuplet
+                        
 
 
                 # notes
@@ -483,12 +486,22 @@ def parse_abc(path):
 
                         i += 1
 
-                    note = chord_notes
+                    print('CHORD NOTES: ' + str(chord_notes))
+
+                    if chord_notes != []:
+                        note = chord_notes[-1][0]
                     octave = 0
                 
                 # add encoded note
-                if (not (note == 0 and duration == 0 and octave == 0)) and handled_tuplet == False :
-                    notes.append([note, duration, octave])
+                if (not (note == 0 and duration == 0 and octave == 0)) and handled_tuplet == False:
+
+                    token = [note, duration, octave]
+
+                    for attribute in token:
+                        if isinstance(attribute, float) and attribute.is_integer():
+                            attribute = int(attribute)
+
+                    notes.append(token)
                     read_notes = True
                 i += 1
                 
@@ -528,9 +541,14 @@ def main():
     with open(output_path, 'w') as f_out:
         # make sure directory is valid
         if not os.path.isdir(root_directory):
-            # print(f"Error: {root_directory} is not a valid directory.")
-            # sys.exit(1)
-            process_file(root_directory) # single file
+            # single file
+            encoded_list = process_file(root_directory)
+            if encoded_list != ['','','']:
+                for element in encoded_list:
+                    if element != '':
+                        element_without_commas = str(element).replace(",", '')
+                        f_out.write(str(element_without_commas) + ', ')
+                f_out.write('\n')
         else:
         # go through all subdirectories
             for subdir, _, files in os.walk(root_directory):
